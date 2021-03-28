@@ -69,11 +69,27 @@ module.exports = grammar({
             $.import_directive,
         ),
 
+        _experimental_directives: $ => choice(
+            "ABIEncoderV2",
+            "SMTChecker",
+        ),
+
+        experimental_directive: $ => seq(
+            "experimental",
+            seq(optional('"'),$._experimental_directives,optional('"')),
+        ),
+
+        solidity_directive: $ => seq(
+            "solidity",
+            repeat(field("version_constraint", $._pragma_version_constraint)),
+        ),
         // Pragma
         pragma_directive: $ => seq(
             "pragma",
-            "solidity",
-            repeat(field("version_constraint", $._pragma_version_constraint)),
+            choice(
+                $.solidity_directive,
+                $.experimental_directive
+            ),
             $._semicolon,
         ),
 
@@ -927,7 +943,7 @@ module.exports = grammar({
             /\.\d+([eE](-)?\d+)?/,
         ),
         _hex_number: $ => seq(/0[xX]/, optional(optionalDashSeparation($._hex_digit))),
-        _hex_digit: $ => /([a-fA-F0-9][a-fA-F0-9])/, 
+        _hex_digit: $ => /[\da-fA-F]/,
         number_unit: $ => choice(
             'wei','szabo', 'finney', 'gwei', 'ether', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'years'
         ),
@@ -984,16 +1000,15 @@ module.exports = grammar({
             )
         ),
         
-
         comment: $ => token(
             prec(PREC.COMMENT, 
                 choice(
                     seq('//', /.*/),
                     seq(
                         '/*',
-                        /.*/,
-                        '*/'
-                    )       
+                        /[^*]*\*+([^/*][^*]*\*+)*/,
+                        '/'
+                    )
                 )
             )
         ),
